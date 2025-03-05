@@ -1,20 +1,28 @@
 {
   "expo": {
-    "name": "Emergency",
-    "slug": "Emergency",
+    "name": "ClearLane",
+    "slug": "ClearLane",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/images/icon.png",
+    "icon": "./assets/images/appicon.jpg",
     "scheme": "myapp",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "config": {
+        "googleMapsApiKey": "AIzaSyBAfFGzfR6FdIvGrnCZ21nAbuc91TcLwfw"
+      }
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#ffffff"
+      },
+      "config": {
+        "googleMaps": {
+          "apiKey": "AIzaSyBAfFGzfR6FdIvGrnCZ21nAbuc91TcLwfw"
+        }
       }
     },
     "web": {
@@ -27,10 +35,11 @@
       [
         "expo-splash-screen",
         {
-          "image": "./assets/images/splash-icon.png",
-          "imageWidth": 200,
+          "image": "./assets/images/splash.jpg",
           "resizeMode": "contain",
-          "backgroundColor": "#ffffff"
+          "backgroundColor": "#ffffff",
+          "imageWidth": 200,
+          "imageHeight": 200
         }
       ]
     ],
