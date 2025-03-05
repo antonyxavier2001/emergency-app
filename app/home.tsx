@@ -13,14 +13,7 @@ import {
   DrawerLayoutAndroid,
   ActivityIndicator,
 } from 'react-native';
-import MapView, { 
-  PROVIDER_GOOGLE, 
-  Marker, 
-  Callout,
-  Circle,
-  Polyline,
-  PROVIDER_DEFAULT
-} from 'react-native-maps';
+import MapView, { PROVIDER_GOOGLE, Marker } from 'react-native-maps';
 import MapViewDirections from 'react-native-maps-directions';
 import { Bell, Menu, Edit2, AlertTriangle, LogOut, MapPin, Navigation, Search } from 'lucide-react-native';
 import * as Location from 'expo-location';
@@ -29,34 +22,33 @@ const { width, height } = Dimensions.get('window');
 const ASPECT_RATIO = width / height;
 const LATITUDE_DELTA = 0.02;
 const LONGITUDE_DELTA = LATITUDE_DELTA * ASPECT_RATIO;
-const GOOGLE_MAPS_API_KEY = 'xxxxxxxxxxxxxxx'; // Replace with your API key
+const GOOGLE_MAPS_API_KEY = 'AIzaSyDBGYnxYGxzrpLvAujO1niSS8bgGCzP55o'; // Replace with your actual API key
 
-type NotificationType = {
+interface NotificationType {
   id: number;
   message: string;
   time: string;
-};
+}
 
-type UserDataType = {
+interface UserDataType {
   name: string;
   phone: string;
   photo: string;
-};
+}
 
-type RouteInfo = {
+interface RouteInfo {
   distance: string;
   duration: string;
   coordinates: any[];
-};
+}
 
-type LocationType = {
+interface LocationType {
   latitude: number;
   longitude: number;
   name?: string;
-};
+}
 
-const HomePage = () => {
-  const [startText, setStartText] = useState<string>('Current Location');
+const HomePage: React.FC = () => {
   const [destinationText, setDestinationText] = useState<string>('');
   const [startLocation, setStartLocation] = useState<LocationType | null>(null);
   const [destination, setDestination] = useState<LocationType | null>(null);
@@ -64,23 +56,20 @@ const HomePage = () => {
   const [showNotifications, setShowNotifications] = useState<boolean>(false);
   const [isStarted, setIsStarted] = useState<boolean>(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
-  const [location, setLocation] = useState<Location.LocationObject | null>(null);
   const [routeInfo, setRouteInfo] = useState<RouteInfo | null>(null);
   const [isTracking, setIsTracking] = useState<boolean>(false);
-  const [watchId, setWatchId] = useState<any>(null);
-  const [isSearchingStart, setIsSearchingStart] = useState<boolean>(false);
   const [isSearchingDest, setIsSearchingDest] = useState<boolean>(false);
   
   const [region, setRegion] = useState({
-    latitude: 0,
-    longitude: 0,
+    latitude: 9.939093,
+    longitude: 76.270523,
     latitudeDelta: LATITUDE_DELTA,
     longitudeDelta: LONGITUDE_DELTA,
   });
 
-  const drawerRef = useRef<DrawerLayoutAndroid | null>(null);
-  const mapRef = useRef<MapView | null>(null);
-  const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const drawerRef = useRef<DrawerLayoutAndroid>(null);
+  const mapRef = useRef<MapView>(null);
+  const watchIdRef = useRef<any>(null);
 
   const userData: UserDataType = {
     name: 'Antony Xavier',
@@ -96,11 +85,8 @@ const HomePage = () => {
   useEffect(() => {
     initializeLocation();
     return () => {
-      if (watchId) {
-        Location.removeWatchPositionAsync(watchId);
-      }
-      if (searchTimeoutRef.current) {
-        clearTimeout(searchTimeoutRef.current);
+      if (watchIdRef.current) {
+        Location.stopLocationUpdatesAsync(watchIdRef.current);
       }
     };
   }, []);
@@ -114,19 +100,20 @@ const HomePage = () => {
         return;
       }
 
-      let location = await Location.getCurrentPositionAsync({
+      let currentLocation = await Location.getCurrentPositionAsync({
         accuracy: Location.Accuracy.High,
       });
-      setLocation(location);
-      setStartLocation({
-        latitude: location.coords.latitude,
-        longitude: location.coords.longitude,
-        name: 'Current Location'
-      });
       
+      const newStartLocation = {
+        latitude: currentLocation.coords.latitude,
+        longitude: currentLocation.coords.longitude,
+        name: 'Current Location',
+      };
+      
+      setStartLocation(newStartLocation);
       const newRegion = {
-        latitude: location.coords.latitude,
-        longitude: location.coords.longitude,
+        latitude: currentLocation.coords.latitude,
+        longitude: currentLocation.coords.longitude,
         latitudeDelta: LATITUDE_DELTA,
         longitudeDelta: LONGITUDE_DELTA,
       };
@@ -140,81 +127,64 @@ const HomePage = () => {
     }
   };
 
-  const handleSearchInputChange = (text: string, isStart: boolean) => {
-    if (isStart) {
-      setStartText(text);
-    } else {
-      setDestinationText(text);
+  const searchDestination = async () => {
+    if (!destinationText.trim()) {
+      setDestination(null);
+      return;
     }
-
-    if (!text.trim().length) {
-      isStart ? setIsSearchingStart(false) : setIsSearchingDest(false);
-      isStart ? setStartLocation(location ? {
-        latitude: location.coords.latitude,
-        longitude: location.coords.longitude,
-        name: 'Current Location'
-      } : null) : setDestination(null);
-    }
-  };
-
-  const searchPlace = async (searchText: string, isStart: boolean) => {
-    if (!searchText.trim()) return;
 
     try {
-      isStart ? setIsSearchingStart(true) : setIsSearchingDest(true);
+      setIsSearchingDest(true);
+      // Add region bias to improve results (you can adjust these bounds)
+      const bounds = startLocation ? 
+        `&location=${startLocation.latitude},${startLocation.longitude}&radius=50000` : '';
+      
       const response = await fetch(
         `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(
-          searchText
-        )}&key=${GOOGLE_MAPS_API_KEY}`
+          destinationText
+        )}${bounds}&key=${GOOGLE_MAPS_API_KEY}`
       );
       
       const data = await response.json();
-
-      if (data.status === 'OK' && data.results && data.results.length > 0) {
+      console.log('Geocode response:', data); // For debugging
+      
+      if (data.status === 'OK' && data.results?.length > 0) {
         const place = data.results[0];
-        const newLocation = {
+        const newDestination = {
           latitude: place.geometry.location.lat,
           longitude: place.geometry.location.lng,
           name: place.formatted_address,
         };
         
-        if (isStart) {
-          setStartLocation(newLocation);
-        } else {
-          setDestination(newLocation);
-        }
-
-        if (startLocation && destination) {
+        setDestination(newDestination);
+        
+        if (startLocation && newDestination) {
           const coords = [
-            {
-              latitude: startLocation.latitude,
-              longitude: startLocation.longitude,
-            },
-            {
-              latitude: destination.latitude,
-              longitude: destination.longitude,
-            },
+            { latitude: startLocation.latitude, longitude: startLocation.longitude },
+            { latitude: newDestination.latitude, longitude: newDestination.longitude },
           ];
           mapRef.current?.fitToCoordinates(coords, {
-            edgePadding: { top: 50, right: 50, bottom: 50, left: 50 },
+            edgePadding: { top: 100, right: 50, bottom: 100, left: 50 },
             animated: true,
           });
-        } else if (newLocation) {
+        } else if (newDestination) {
           mapRef.current?.animateToRegion({
-            latitude: newLocation.latitude,
-            longitude: newLocation.longitude,
+            latitude: newDestination.latitude,
+            longitude: newDestination.longitude,
             latitudeDelta: LATITUDE_DELTA,
             longitudeDelta: LONGITUDE_DELTA,
           }, 1000);
         }
       } else {
-        Alert.alert('Error', 'Location not found');
+        Alert.alert('Error', `Destination not found: ${data.status}`);
+        setDestination(null);
       }
     } catch (error) {
-      console.error('Error searching place:', error);
-      Alert.alert('Error', 'Failed to search location');
+      console.error('Error searching destination:', error);
+      Alert.alert('Error', 'Failed to search destination. Please check your internet connection.');
+      setDestination(null);
     } finally {
-      isStart ? setIsSearchingStart(false) : setIsSearchingDest(false);
+      setIsSearchingDest(false);
     }
   };
 
@@ -227,8 +197,12 @@ const HomePage = () => {
           distanceInterval: 10,
         },
         (newLocation) => {
-          setLocation(newLocation);
           if (isTracking) {
+            setStartLocation({
+              latitude: newLocation.coords.latitude,
+              longitude: newLocation.coords.longitude,
+              name: 'Current Location',
+            });
             mapRef.current?.animateToRegion({
               latitude: newLocation.coords.latitude,
               longitude: newLocation.coords.longitude,
@@ -238,7 +212,7 @@ const HomePage = () => {
           }
         }
       );
-      setWatchId(watchId);
+      watchIdRef.current = watchId;
     } catch (error) {
       console.error('Error starting tracking:', error);
       Alert.alert('Error', 'Failed to start tracking');
@@ -246,16 +220,16 @@ const HomePage = () => {
   };
 
   const stopTracking = () => {
-    if (watchId) {
-      watchId.remove();
-      setWatchId(null);
+    if (watchIdRef.current) {
+      watchIdRef.current.remove();
+      watchIdRef.current = null;
     }
     setIsTracking(false);
   };
 
   const handleStartNavigation = async () => {
     if (!destination || !startLocation) {
-      Alert.alert('Error', 'Please select both start and destination locations');
+      Alert.alert('Error', 'Please select a destination');
       return;
     }
 
@@ -267,24 +241,6 @@ const HomePage = () => {
     setIsStarted(true);
     setIsTracking(true);
     await startTracking();
-
-    if (mapRef.current && startLocation && destination) {
-      const coords = [
-        {
-          latitude: startLocation.latitude,
-          longitude: startLocation.longitude,
-        },
-        {
-          latitude: destination.latitude,
-          longitude: destination.longitude,
-        },
-      ];
-
-      mapRef.current.fitToCoordinates(coords, {
-        edgePadding: { top: 50, right: 50, bottom: 50, left: 50 },
-        animated: true,
-      });
-    }
   };
 
   const handleStopNavigation = () => {
@@ -294,35 +250,27 @@ const HomePage = () => {
     setDestinationText('');
     setRouteInfo(null);
     setPriority(null);
-    if (location) {
-      setStartLocation({
-        latitude: location.coords.latitude,
-        longitude: location.coords.longitude,
-        name: 'Current Location'
-      });
-    }
-    setStartText('Current Location');
+    initializeLocation();
   };
 
   const goToMyLocation = async () => {
     try {
-      const location = await Location.getCurrentPositionAsync({
+      const currentLocation = await Location.getCurrentPositionAsync({
         accuracy: Location.Accuracy.High,
       });
       
       const newRegion = {
-        latitude: location.coords.latitude,
-        longitude: location.coords.longitude,
+        latitude: currentLocation.coords.latitude,
+        longitude: currentLocation.coords.longitude,
         latitudeDelta: LATITUDE_DELTA,
         longitudeDelta: LONGITUDE_DELTA,
       };
 
       setStartLocation({
-        latitude: location.coords.latitude,
-        longitude: location.coords.longitude,
+        latitude: currentLocation.coords.latitude,
+        longitude: currentLocation.coords.longitude,
         name: 'Current Location'
       });
-      setStartText('Current Location');
       mapRef.current?.animateToRegion(newRegion, 1000);
     } catch (error) {
       Alert.alert('Error', 'Could not get current location');
@@ -332,10 +280,7 @@ const HomePage = () => {
   const renderDrawerContent = () => (
     <View style={styles.drawerContainer}>
       <View style={styles.drawerHeader}>
-        <Image
-          source={{ uri: userData.photo }}
-          style={styles.profilePhoto}
-        />
+        <Image source={{ uri: userData.photo }} style={styles.profilePhoto} />
         <Text style={styles.userName}>{userData.name}</Text>
         <Text style={styles.userPhone}>{userData.phone}</Text>
       </View>
@@ -372,26 +317,9 @@ const HomePage = () => {
     <View style={styles.searchContainer}>
       <View style={styles.searchBox}>
         <MapPin size={20} color="#666" />
-        <TextInput
-          style={styles.searchInput}
-          placeholder="Enter start location"
-          value={startText}
-          onChangeText={(text) => handleSearchInputChange(text, true)}
-          onSubmitEditing={() => searchPlace(startText, true)}
-          returnKeyType="search"
-          autoCorrect={false}
-          autoCapitalize="none"
-        />
-        {isSearchingStart ? (
-          <ActivityIndicator size="small" color="#666" style={styles.searchButton} />
-        ) : (
-          <TouchableOpacity 
-            style={styles.searchButton}
-            onPress={() => searchPlace(startText, true)}
-          >
-            <Search size={20} color="#666" />
-          </TouchableOpacity>
-        )}
+        <Text style={styles.startText}>
+          {startLocation?.name || 'Current Location'}
+        </Text>
       </View>
 
       <View style={[styles.searchBox, styles.secondSearchBox]}>
@@ -400,8 +328,8 @@ const HomePage = () => {
           style={styles.searchInput}
           placeholder="Enter destination"
           value={destinationText}
-          onChangeText={(text) => handleSearchInputChange(text, false)}
-          onSubmitEditing={() => searchPlace(destinationText, false)}
+          onChangeText={setDestinationText} // Only updates text, no search
+          onSubmitEditing={searchDestination} // Search only on Enter
           returnKeyType="search"
           autoCorrect={false}
           autoCapitalize="none"
@@ -411,27 +339,12 @@ const HomePage = () => {
         ) : (
           <TouchableOpacity 
             style={styles.searchButton}
-            onPress={() => searchPlace(destinationText, false)}
+            onPress={searchDestination} // Search only on button press
           >
             <Search size={20} color="#666" />
           </TouchableOpacity>
         )}
       </View>
-
-      {(startLocation || destination) && (
-        <View style={styles.selectedLocations}>
-          {startLocation && (
-            <Text style={styles.selectedText}>
-              Start: {startLocation.name}
-            </Text>
-          )}
-          {destination && (
-            <Text style={styles.selectedText}>
-              Dest: {destination.name}
-            </Text>
-          )}
-        </View>
-      )}
     </View>
   );
 
@@ -466,8 +379,6 @@ const HomePage = () => {
           showsCompass={true}
           showsTraffic={true}
           loadingEnabled={true}
-          minZoomLevel={3}
-          maxZoomLevel={20}
         >
           {startLocation && (
             <Marker
@@ -506,16 +417,22 @@ const HomePage = () => {
               apikey={GOOGLE_MAPS_API_KEY}
               strokeWidth={3}
               strokeColor="#2196F3"
+              mode="DRIVING"
               onReady={(result) => {
                 setRouteInfo({
-                  distance: result.distance,
-                  duration: result.duration,
+                  distance: result.distance.toString(),
+                  duration: result.duration.toString(),
                   coordinates: result.coordinates,
                 });
                 mapRef.current?.fitToCoordinates(result.coordinates, {
-                  edgePadding: { top: 50, right: 50, bottom: 50, left: 50 },
+                  edgePadding: { top: 100, right: 50, bottom: 100, left: 50 },
                   animated: true,
                 });
+              }}
+              onError={(errorMessage) => {
+                console.log('Directions error:', errorMessage);
+                Alert.alert('Error', 'Could not find a route to the destination');
+                setRouteInfo(null);
               }}
             />
           )}
@@ -531,10 +448,10 @@ const HomePage = () => {
         {routeInfo && (
           <View style={styles.routeInfoContainer}>
             <Text style={styles.routeInfoText}>
-              Distance: {routeInfo.distance.toFixed(2)} km
+              Distance: {parseFloat(routeInfo.distance).toFixed(1)} km
             </Text>
             <Text style={styles.routeInfoText}>
-              Duration: {routeInfo.duration.toFixed(0)} mins
+              Duration: {Math.round(parseFloat(routeInfo.duration))} mins
             </Text>
           </View>
         )}
@@ -555,56 +472,31 @@ const HomePage = () => {
       </View>
 
       <View style={styles.priorityContainer}>
-        <TouchableOpacity
-          style={[
-            styles.priorityButton,
-            selectedPriority === 'high' && styles.selectedHighPriority,
-          ]}
-          onPress={() => setPriority('high')}
-          disabled={isStarted}
-        >
-          <Text style={[
-            styles.priorityText,
-            selectedPriority === 'high' && styles.selectedPriorityText
-          ]}>High</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={[
-            styles.priorityButton,
-            selectedPriority === 'medium' && styles.selectedMediumPriority,
-          ]}
-          onPress={() => setPriority('medium')}
-          disabled={isStarted}
-        >
-          <Text style={[
-            styles.priorityText,
-            selectedPriority === 'medium' && styles.selectedPriorityText
-          ]}>Medium</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={[
-            styles.priorityButton,
-            selectedPriority === 'low' && styles.selectedLowPriority,
-          ]}
-          onPress={() => setPriority('low')}
-          disabled={isStarted}
-        >
-          <Text style={[
-            styles.priorityText,
-            selectedPriority === 'low' && styles.selectedPriorityText
-          ]}>Low</Text>
-        </TouchableOpacity>
+        {['high', 'medium', 'low'].map((priority) => (
+          <TouchableOpacity
+            key={priority}
+            style={[
+              styles.priorityButton,
+              selectedPriority === priority && styles[`selected${priority.charAt(0).toUpperCase() + priority.slice(1)}Priority`],
+            ]}
+            onPress={() => setPriority(priority)}
+            disabled={isStarted}
+          >
+            <Text style={[
+              styles.priorityText,
+              selectedPriority === priority && styles.selectedPriorityText
+            ]}>
+              {priority.charAt(0).toUpperCase() + priority.slice(1)}
+            </Text>
+          </TouchableOpacity>
+        ))}
       </View>
     </SafeAreaView>
   );
 
-  if (Platform.OS === 'ios') {
-    return <MainContent />;
-  }
-
-  return (
+  return Platform.OS === 'ios' ? (
+    <MainContent />
+  ) : (
     <DrawerLayoutAndroid
       ref={drawerRef}
       drawerWidth={300}
@@ -628,10 +520,6 @@ const styles = StyleSheet.create({
     padding: 16,
     backgroundColor: '#fff',
     elevation: 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
   },
   menuButton: {
     padding: 8,
@@ -661,15 +549,14 @@ const styles = StyleSheet.create({
     marginLeft: 8,
     marginRight: 8,
   },
+  startText: {
+    flex: 1,
+    fontSize: 16,
+    marginLeft: 8,
+    color: '#333',
+  },
   searchButton: {
     padding: 8,
-  },
-  selectedLocations: {
-    marginTop: 8,
-  },
-  selectedText: {
-    fontSize: 14,
-    color: '#666',
   },
   mapContainer: {
     flex: 1,
@@ -685,10 +572,6 @@ const styles = StyleSheet.create({
     borderRadius: 24,
     padding: 12,
     elevation: 4,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
   },
   routeInfoContainer: {
     position: 'absolute',
@@ -698,10 +581,6 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     padding: 12,
     elevation: 4,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
   },
   routeInfoText: {
     fontSize: 14,
@@ -719,8 +598,7 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
     paddingHorizontal: 32,
     borderRadius: 8,
-    alignItems: 'center',
-    justifyContent: 'center',
+    width: '100%',
   },
   stopButton: {
     backgroundColor: '#FF0000',
@@ -729,6 +607,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#fff',
     fontWeight: 'bold',
+    textAlign: 'center',
   },
   priorityContainer: {
     position: 'absolute',
@@ -743,8 +622,8 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     paddingHorizontal: 24,
     borderRadius: 8,
-    alignItems: 'center',
-    justifyContent: 'center',
+    flex: 1,
+    marginHorizontal: 5,
   },
   selectedHighPriority: {
     backgroundColor: '#FF0000',
@@ -758,6 +637,7 @@ const styles = StyleSheet.create({
   priorityText: {
     fontSize: 14,
     color: '#333',
+    textAlign: 'center',
   },
   selectedPriorityText: {
     color: '#fff',
@@ -808,10 +688,6 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     padding: 16,
     elevation: 4,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
     zIndex: 2,
   },
   notificationTitle: {
