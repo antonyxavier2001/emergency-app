@@ -29,7 +29,7 @@ const { width, height } = Dimensions.get('window');
 const ASPECT_RATIO = width / height;
 const LATITUDE_DELTA = 0.02;
 const LONGITUDE_DELTA = LATITUDE_DELTA * ASPECT_RATIO;
-const GOOGLE_MAPS_API_KEY = 'AIzaSyBAfFGzfR6FdIvGrnCZ21nAbuc91TcLwfw'; // Replace with your API key
+const GOOGLE_MAPS_API_KEY = 'xxxxxxxxxxxxxxx'; // Replace with your API key
 
 type NotificationType = {
   id: number;
@@ -85,7 +85,7 @@ const HomePage = () => {
   const userData: UserDataType = {
     name: 'Antony Xavier',
     phone: '+91 9876543210',
-    photo: './assets/images/ANTONY.jpg',
+    photo: './assets/images/splash.jpg',
   };
 
   const notifications: NotificationType[] = [
