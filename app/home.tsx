@@ -22,7 +22,7 @@ const { width, height } = Dimensions.get('window');
 const ASPECT_RATIO = width / height;
 const LATITUDE_DELTA = 0.02;
 const LONGITUDE_DELTA = LATITUDE_DELTA * ASPECT_RATIO;
-const GOOGLE_MAPS_API_KEY = 'AIzaSyDBGYnxYGxzrpLvAujO1niSS8bgGCzP55o'; // Replace with your actual API key
+const GOOGLE_MAPS_API_KEY = '....'; // Replace with your actual API key
 
 interface NotificationType {
   id: number;
