@@ -11,7 +11,7 @@ export default function Home() {
   const rotateAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    // Animate fade-in, scale-up, and rotation
+    
     Animated.parallel([
       Animated.timing(fadeAnim, {
         toValue: 1,
@@ -30,9 +30,9 @@ export default function Home() {
       }),
     ]).start();
 
-    // Navigate to login after animation
+    
     const timer = setTimeout(() => {
-      // Fade out before navigation
+      
       Animated.timing(fadeAnim, {
         toValue: 0,
         duration: 400,

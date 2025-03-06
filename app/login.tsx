@@ -1,11 +1,11 @@
 import React, { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert } from 'react-native';
-import { Link, useRouter } from 'expo-router'; // Add useRouter
+import { Link, useRouter } from 'expo-router';
 
 export default function LoginPage() {
   const [mobileNumber, setMobileNumber] = useState('');
   const [password, setPassword] = useState('');
-  const router = useRouter(); // Initialize the router
+  const router = useRouter(); 
 
   const handleLogin = () => {
     if (!/^\d{10}$/.test(mobileNumber)) {
@@ -18,14 +18,14 @@ export default function LoginPage() {
       return;
     }
 
-    // Handle login logic and navigate to home page
+    
     Alert.alert(
       'Login Successful',
       `Mobile: ${mobileNumber}, Password: ${password}`,
       [
         {
           text: 'OK',
-          onPress: () => router.replace('/home'), // Navigate to home page
+          onPress: () => router.replace('/home'), 
         },
       ]
     );

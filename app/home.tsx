@@ -22,7 +22,7 @@ const { width, height } = Dimensions.get('window');
 const ASPECT_RATIO = width / height;
 const LATITUDE_DELTA = 0.02;
 const LONGITUDE_DELTA = LATITUDE_DELTA * ASPECT_RATIO;
-const GOOGLE_MAPS_API_KEY = process.env.EXPO_PUBLIC_API_KEY; // Replace with your actual API key
+const GOOGLE_MAPS_API_KEY = process.env.EXPO_PUBLIC_API_KEY;
 
 interface NotificationType {
   id: number;
@@ -135,7 +135,6 @@ const HomePage: React.FC = () => {
 
     try {
       setIsSearchingDest(true);
-      // Add region bias to improve results (you can adjust these bounds)
       const bounds = startLocation ? 
         `&location=${startLocation.latitude},${startLocation.longitude}&radius=50000` : '';
       
@@ -146,7 +145,7 @@ const HomePage: React.FC = () => {
       );
       
       const data = await response.json();
-      console.log('Geocode response:', data); // For debugging
+      console.log('Geocode response:', data);
       
       if (data.status === 'OK' && data.results?.length > 0) {
         const place = data.results[0];
@@ -328,8 +327,8 @@ const HomePage: React.FC = () => {
           style={styles.searchInput}
           placeholder="Enter destination"
           value={destinationText}
-          onChangeText={setDestinationText} // Only updates text, no search
-          onSubmitEditing={searchDestination} // Search only on Enter
+          onChangeText={setDestinationText} 
+          onSubmitEditing={searchDestination}
           returnKeyType="search"
           autoCorrect={false}
           autoCapitalize="none"
@@ -339,7 +338,7 @@ const HomePage: React.FC = () => {
         ) : (
           <TouchableOpacity 
             style={styles.searchButton}
-            onPress={searchDestination} // Search only on button press
+            onPress={searchDestination} 
           >
             <Search size={20} color="#666" />
           </TouchableOpacity>
