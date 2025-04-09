@@ -1,3 +1,4 @@
+// app/reportincidents.tsx
 import React, { useState, useEffect } from 'react';
 import {
   View,
@@ -15,7 +16,7 @@ import {
 } from 'react-native';
 import * as Location from 'expo-location';
 import * as ImagePicker from 'expo-image-picker';
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import { ArrowLeft, Map, Upload, X, Check, MapPin, Search } from 'lucide-react-native';
 import MapView, { PROVIDER_GOOGLE, Marker } from 'react-native-maps';
 
@@ -27,6 +28,7 @@ interface LocationType {
 
 const ReportIncidentPage: React.FC = () => {
   const router = useRouter();
+  const params = useLocalSearchParams(); // Get params passed from HomePage
   const [description, setDescription] = useState<string>('');
   const [image, setImage] = useState<string | null>(null);
   const [location, setLocation] = useState<LocationType | null>(null);
@@ -51,10 +53,27 @@ const ReportIncidentPage: React.FC = () => {
         }
       }
 
-      // Get current location
-      getCurrentLocation();
+      // Check if location is passed from HomePage
+      if (params.latitude && params.longitude) {
+        const passedLocation: LocationType = {
+          latitude: Number(params.latitude),
+          longitude: Number(params.longitude),
+          name: 'Current Location from Home',
+        };
+        setLocation(passedLocation);
+        setRegion({
+          ...region,
+          latitude: passedLocation.latitude,
+          longitude: passedLocation.longitude,
+        });
+        // Reverse geocode to get the address
+        await reverseGeocodeLocation(passedLocation);
+      } else {
+        // Otherwise, get current location
+        getCurrentLocation();
+      }
     })();
-  }, []);
+  }, [params.latitude, params.longitude]);
 
   const getCurrentLocation = async () => {
     try {
@@ -81,10 +100,18 @@ const ReportIncidentPage: React.FC = () => {
         longitude: currentLocation.coords.longitude,
       });
 
-      // Get address from coordinates
+      await reverseGeocodeLocation(newLocation);
+    } catch (error) {
+      console.error('Error getting location:', error);
+      Alert.alert('Error', 'Failed to get your location');
+    }
+  };
+
+  const reverseGeocodeLocation = async (loc: LocationType) => {
+    try {
       const geocode = await Location.reverseGeocodeAsync({
-        latitude: currentLocation.coords.latitude,
-        longitude: currentLocation.coords.longitude,
+        latitude: loc.latitude,
+        longitude: loc.longitude,
       });
 
       if (geocode && geocode.length > 0) {
@@ -102,13 +129,12 @@ const ReportIncidentPage: React.FC = () => {
           .join(', ');
 
         setLocation({
-          ...newLocation,
+          ...loc,
           name: formattedAddress,
         });
       }
     } catch (error) {
-      console.error('Error getting location:', error);
-      Alert.alert('Error', 'Failed to get your location');
+      console.error('Error reverse geocoding:', error);
     }
   };
 
@@ -159,7 +185,6 @@ const ReportIncidentPage: React.FC = () => {
           longitude: newLocation.longitude,
         });
 
-        // Close map if it's open
         if (showMap) {
           setShowMap(false);
         }
@@ -185,41 +210,10 @@ const ReportIncidentPage: React.FC = () => {
       name: 'Selected Location',
     });
 
-    // Reverse geocode to get address
-    (async () => {
-      try {
-        const geocode = await Location.reverseGeocodeAsync({
-          latitude: selectedLocation.latitude,
-          longitude: selectedLocation.longitude,
-        });
-
-        if (geocode && geocode.length > 0) {
-          const address = geocode[0];
-          const formattedAddress = [
-            address.name,
-            address.street,
-            address.district,
-            address.city,
-            address.region,
-            address.postalCode,
-            address.country,
-          ]
-            .filter(Boolean)
-            .join(', ');
-
-          setLocation({
-            ...selectedLocation,
-            name: formattedAddress,
-          });
-        }
-      } catch (error) {
-        console.error('Error reverse geocoding:', error);
-      }
-    })();
+    reverseGeocodeLocation(selectedLocation);
   };
 
   const handleSubmit = async () => {
-    // Validate input
     if (!description.trim()) {
       Alert.alert('Error', 'Please provide a description of the incident');
       return;
@@ -233,7 +227,6 @@ const ReportIncidentPage: React.FC = () => {
     try {
       setIsLoading(true);
 
-      // Create form data for the image upload
       const formData = new FormData();
       formData.append('description', description);
       formData.append('latitude', location.latitude.toString());
@@ -241,7 +234,6 @@ const ReportIncidentPage: React.FC = () => {
       formData.append('locationName', location.name || '');
       
       if (image) {
-        // Get file extension
         const fileExtension = image.split('.').pop();
         const fileName = `incident_${Date.now()}.${fileExtension}`;
         
@@ -252,7 +244,7 @@ const ReportIncidentPage: React.FC = () => {
         } as any);
       }
 
-      // make an API call to backend
+      // Uncomment and replace with your actual API endpoint
       // const response = await fetch('YOUR_API_ENDPOINT', {
       //   method: 'POST',
       //   body: formData,
@@ -260,11 +252,10 @@ const ReportIncidentPage: React.FC = () => {
       //     'Content-Type': 'multipart/form-data',
       //   },
       // });
-      
+
       // Simulate API call
       await new Promise(resolve => setTimeout(resolve, 1000));
       
-      // Show success message
       Alert.alert(
         'Success',
         'Incident reported successfully',

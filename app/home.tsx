@@ -17,7 +17,7 @@ import {
 import MapView, { PROVIDER_GOOGLE, Marker, Polyline } from 'react-native-maps';
 import * as Location from 'expo-location';
 import { Bell, Menu, Edit2, AlertTriangle, LogOut, MapPin, Navigation, Search, Compass, X } from 'lucide-react-native';
-import { useRouter } from 'expo-router'; // Replace useNavigation with useRouter
+import { useRouter } from 'expo-router';
 
 const { width, height } = Dimensions.get('window');
 const ASPECT_RATIO = width / height;
@@ -58,7 +58,7 @@ interface NavigationStep {
 }
 
 const HomePage: React.FC = () => {
-  const router = useRouter(); // Use Expo Router's useRouter hook
+  const router = useRouter();
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [startLocation, setStartLocation] = useState<LocationType | null>(null);
   const [destination, setDestination] = useState<LocationType | null>(null);
@@ -95,7 +95,7 @@ const HomePage: React.FC = () => {
   const userData: UserDataType = {
     name: 'Antony Xavier',
     phone: '+91 7306148637',
-    photo: './assets/images/splash.jpg',
+    photo: './assets/images/splash.jpg', // Update to require() if needed
     vehicleId: 'AMB123',
     role: 'ambulance driver',
   };
@@ -466,6 +466,25 @@ const HomePage: React.FC = () => {
     }
   };
 
+  const handleLogout = () => {
+    // Close the drawer
+    drawerRef.current?.closeDrawer();
+    
+    // Reset state (optional, depending on your app's needs)
+    setStartLocation(null);
+    setDestination(null);
+    setPriority(null);
+    setIsStarted(false);
+    setRouteInfo(null);
+    setRouteCoordinates(null);
+    setNavigationSteps(null);
+    setSearchQuery('');
+    stopTracking();
+
+    // Navigate to the login page
+    router.replace('/login'); // Use replace to prevent going back to HomePage
+  };
+
   const renderDrawerContent = () => (
     <View style={styles.drawerContainer}>
       <View style={styles.drawerHeader}>
@@ -482,23 +501,16 @@ const HomePage: React.FC = () => {
           style={styles.drawerItem}
           onPress={() => {
             drawerRef.current?.closeDrawer();
-            router.push('/editprofile');// Use Expo Router's router.push to navigate
+            router.push('/editprofile');
           }}
         >
-         <Edit2 size={24} color="#333" />
-        <Text style={styles.drawerItemText}>Edit Profile</Text>
-      </TouchableOpacity>
-      <TouchableOpacity 
-        style={styles.drawerItem}
-        onPress={() => {
-          drawerRef.current?.closeDrawer();
-          router.push('/reportincidents');
-        }}
-      >
-          <AlertTriangle size={24} color="#333" />
-          <Text style={styles.drawerItemText}>Report Incident</Text>
+          <Edit2 size={24} color="#333" />
+          <Text style={styles.drawerItemText}>Edit Profile</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.drawerItem}>
+        <TouchableOpacity
+          style={styles.drawerItem}
+          onPress={handleLogout} // Call handleLogout on press
+        >
           <LogOut size={24} color="#333" />
           <Text style={styles.drawerItemText}>Logout</Text>
         </TouchableOpacity>
@@ -705,6 +717,13 @@ const HomePage: React.FC = () => {
               <MapPin size={24} color="#2196F3" />
             </TouchableOpacity>
 
+            <TouchableOpacity
+              style={styles.reportIncidentButton}
+              onPress={() => router.push('/reportincidents')}
+            >
+              <AlertTriangle size={24} color="#fff" />
+            </TouchableOpacity>
+
             {routeInfo && (
               <View style={styles.routeInfoContainer}>
                 <Text style={styles.routeInfoText}>Distance: {routeInfo.distance}</Text>
@@ -874,6 +893,23 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     zIndex: 10,
   },
+  reportIncidentButton: {
+    position: 'absolute',
+    bottom: 180,
+    right: 20,
+    backgroundColor: '#FF3B30',
+    borderRadius: 30,
+    width: 60,
+    height: 60,
+    justifyContent: 'center',
+    alignItems: 'center',
+    elevation: 5,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    zIndex: 10,
+  },
   routeInfoContainer: {
     position: 'absolute',
     top: 20,
@@ -904,9 +940,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 32,
     borderRadius: 8,
     width: '100%',
-  },
-  stopButton: {
-    backgroundColor: '#FF0000',
   },
   startButtonText: {
     fontSize: 16,
